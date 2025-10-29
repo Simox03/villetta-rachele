@@ -1,0 +1,21 @@
+# Example Firestore & Storage rules (publish from Firebase console)
+Firestore rules (example):
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /settings/{doc} { allow read: if true; allow write: if request.auth != null; }
+    match /images/{doc} { allow read: if true; allow write: if request.auth != null; }
+    match /bookings/{doc} { allow read: if true; allow write: if request.auth != null; }
+  }
+}
+
+Storage rules (example):
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /images/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+  }
+}
