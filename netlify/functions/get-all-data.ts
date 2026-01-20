@@ -46,7 +46,7 @@ const handler: Handler = async () => {
                 contactSubmissions: allContactSubmissions,
                 userQuestions: allUserQuestions,
                 siteContent: getSetting('siteContent', INITIAL_SITE_CONTENT),
-                heroImage: getSetting('heroImage', '/images/hero/hero_image_01.jpg'),
+                heroImage: getSetting('heroImage', '/images/facade.jpg'),
                 galleryImages: getSetting('galleryImages', GALLERY_IMAGES),
                 isQuizEnabled: getSetting('isQuizEnabled', true),
                 dateInfo: getSetting('dateInfo', {}),
