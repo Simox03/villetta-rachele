@@ -11,6 +11,7 @@ const handler: Handler = async (event) => {
     if (event.httpMethod !== 'POST') return { statusCode: 405, body: 'Method Not Allowed' };
 
     try {
+        console.log("Incoming booking request body:", event.body);
         const bookingData = JSON.parse(event.body || '{}');
         if (!bookingData.name || !bookingData.email || !bookingData.checkIn || !bookingData.checkOut) {
             return { statusCode: 400, body: JSON.stringify({ error: 'Missing required booking fields.' }) };
@@ -25,6 +26,8 @@ const handler: Handler = async (event) => {
             totalPrice: bookingData.totalPrice,
             submittedAt: new Date(),
         }).returning();
+
+        console.log("Booking added successfully:", newBooking);
 
         return {
             statusCode: 200,
