@@ -1,9 +1,12 @@
+
 /**
  * @file netlify/functions/update-site-data.ts
- * @purpose A generic serverless function to update a specific key-value pair in the Netlify Blob store.
+ * @purpose A generic serverless function to update a specific key-value pair in the Postgres database.
  */
-import { getStore } from '@netlify/blobs';
 import { Handler } from '@netlify/functions';
+import { db } from '../../db';
+import { siteSettings } from '../../db/schema';
+import { eq } from 'drizzle-orm';
 
 // Whitelist of keys that can be updated to prevent arbitrary writes.
 const VALID_KEYS = [
@@ -23,18 +26,21 @@ const handler: Handler = async (event) => {
     try {
         const { key, value } = JSON.parse(event.body || '{}');
         if (!key || !VALID_KEYS.includes(key)) {
-            return { 
-                statusCode: 400, 
-                body: JSON.stringify({ error: `Invalid or missing key. Must be one of: ${VALID_KEYS.join(', ')}` }) 
+            return {
+                statusCode: 400,
+                body: JSON.stringify({ error: `Invalid or missing key. Must be one of: ${VALID_KEYS.join(', ')}` })
             };
         }
 
-        const store = getStore('villetta-rachele-data');
-        await store.setJSON(key, value);
+        // Upsert logic: simple on conflict do update if supported, or check exists.
+        // Postgres supports ON CONFLICT (key) DO UPDATE
+        await db.insert(siteSettings)
+            .values({ key, value })
+            .onConflictDoUpdate({ target: siteSettings.key, set: { value } });
 
-        return { 
-            statusCode: 200, 
-            body: JSON.stringify({ success: true, message: `Successfully updated '${key}'.` }) 
+        return {
+            statusCode: 200,
+            body: JSON.stringify({ success: true, message: `Successfully updated '${key}'.` })
         };
     } catch (error) {
         console.error(`Error updating site data for key:`, error);

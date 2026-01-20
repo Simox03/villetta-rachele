@@ -1,10 +1,12 @@
+
 /**
  * @file netlify/functions/delete-contact-submission.ts
- * @purpose Serverless function to delete a contact submission by its ID.
+ * @purpose Serverless function to delete a contact submission by its ID in Postgres.
  */
-import { getStore } from '@netlify/blobs';
 import { Handler } from '@netlify/functions';
-import type { ContactSubmission } from '../../types';
+import { db } from '../../db';
+import { contactSubmissions } from '../../db/schema';
+import { eq } from 'drizzle-orm';
 
 const handler: Handler = async (event) => {
     if (event.httpMethod !== 'POST') {
@@ -15,16 +17,14 @@ const handler: Handler = async (event) => {
         if (!id) {
             return { statusCode: 400, body: JSON.stringify({ error: 'Missing submission ID.' }) };
         }
-        const store = getStore('villetta-rachele-data');
-        const submissions = await store.get('contactSubmissions', { type: 'json' }) as ContactSubmission[] || [];
 
-        const updatedSubmissions = submissions.filter(s => s.id !== id);
+        const result = await db.delete(contactSubmissions)
+            .where(eq(contactSubmissions.id, id))
+            .returning();
 
-        if (submissions.length === updatedSubmissions.length) {
+        if (result.length === 0) {
             return { statusCode: 404, body: JSON.stringify({ error: 'Contact submission not found.' }) };
         }
-        
-        await store.setJSON('contactSubmissions', updatedSubmissions);
 
         return { statusCode: 200, body: JSON.stringify({ success: true }) };
     } catch (error) {

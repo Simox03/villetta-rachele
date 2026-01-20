@@ -1,10 +1,11 @@
+
 /**
  * @file netlify/functions/add-user-question.ts
- * @purpose Serverless function to add a new user question from the FAQ section.
+ * @purpose Serverless function to add a new user question to Postgres.
  */
-import { getStore } from '@netlify/blobs';
 import { Handler } from '@netlify/functions';
-import type { UserQuestion } from '../../types';
+import { db } from '../../db';
+import { userQuestions } from '../../db/schema';
 
 const handler: Handler = async (event) => {
     if (event.httpMethod !== 'POST') return { statusCode: 405, body: 'Method Not Allowed' };
@@ -15,17 +16,11 @@ const handler: Handler = async (event) => {
             return { statusCode: 400, body: JSON.stringify({ error: 'Missing required question fields.' }) };
         }
 
-        const store = getStore('villetta-rachele-data');
-        const questions = await store.get('userQuestions', { type: 'json' }) as UserQuestion[] || [];
-        
-        const newQuestion: UserQuestion = {
-            ...questionData,
-            id: Date.now(),
+        const [newQuestion] = await db.insert(userQuestions).values({
+            email: questionData.email,
+            question: questionData.question,
             submittedAt: new Date(),
-        };
-
-        questions.unshift(newQuestion);
-        await store.setJSON('userQuestions', questions);
+        }).returning();
 
         return {
             statusCode: 200,

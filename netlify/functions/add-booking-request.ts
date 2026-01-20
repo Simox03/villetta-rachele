@@ -1,10 +1,11 @@
+
 /**
  * @file netlify/functions/add-booking-request.ts
- * @purpose Serverless function to add a new booking request.
+ * @purpose Serverless function to add a new booking request to Postgres.
  */
-import { getStore } from '@netlify/blobs';
 import { Handler } from '@netlify/functions';
-import type { BookingRequest } from '../../types';
+import { db } from '../../db';
+import { bookingRequests } from '../../db/schema';
 
 const handler: Handler = async (event) => {
     if (event.httpMethod !== 'POST') return { statusCode: 405, body: 'Method Not Allowed' };
@@ -12,20 +13,18 @@ const handler: Handler = async (event) => {
     try {
         const bookingData = JSON.parse(event.body || '{}');
         if (!bookingData.name || !bookingData.email || !bookingData.checkIn || !bookingData.checkOut) {
-             return { statusCode: 400, body: JSON.stringify({ error: 'Missing required booking fields.' }) };
+            return { statusCode: 400, body: JSON.stringify({ error: 'Missing required booking fields.' }) };
         }
 
-        const store = getStore('villetta-rachele-data');
-        const bookings = await store.get('bookingRequests', { type: 'json' }) as BookingRequest[] || [];
-        
-        const newBooking: BookingRequest = {
-            ...bookingData,
-            id: Date.now(),
+        const [newBooking] = await db.insert(bookingRequests).values({
+            name: bookingData.name,
+            email: bookingData.email,
+            checkIn: new Date(bookingData.checkIn),
+            checkOut: new Date(bookingData.checkOut),
+            nights: bookingData.nights,
+            totalPrice: bookingData.totalPrice,
             submittedAt: new Date(),
-        };
-
-        bookings.unshift(newBooking);
-        await store.setJSON('bookingRequests', bookings);
+        }).returning();
 
         return {
             statusCode: 200,

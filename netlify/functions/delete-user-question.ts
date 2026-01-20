@@ -1,10 +1,12 @@
+
 /**
  * @file netlify/functions/delete-user-question.ts
- * @purpose Serverless function to delete a user question by its ID.
+ * @purpose Serverless function to delete a user question by its ID in Postgres.
  */
-import { getStore } from '@netlify/blobs';
 import { Handler } from '@netlify/functions';
-import type { UserQuestion } from '../../types';
+import { db } from '../../db';
+import { userQuestions } from '../../db/schema';
+import { eq } from 'drizzle-orm';
 
 const handler: Handler = async (event) => {
     if (event.httpMethod !== 'POST') {
@@ -15,16 +17,14 @@ const handler: Handler = async (event) => {
         if (!id) {
             return { statusCode: 400, body: JSON.stringify({ error: 'Missing question ID.' }) };
         }
-        const store = getStore('villetta-rachele-data');
-        const questions = await store.get('userQuestions', { type: 'json' }) as UserQuestion[] || [];
 
-        const updatedQuestions = questions.filter(q => q.id !== id);
+        const result = await db.delete(userQuestions)
+            .where(eq(userQuestions.id, id))
+            .returning();
 
-        if (questions.length === updatedQuestions.length) {
+        if (result.length === 0) {
             return { statusCode: 404, body: JSON.stringify({ error: 'User question not found.' }) };
         }
-        
-        await store.setJSON('userQuestions', updatedQuestions);
 
         return { statusCode: 200, body: JSON.stringify({ success: true }) };
     } catch (error) {

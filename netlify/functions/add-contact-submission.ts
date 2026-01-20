@@ -1,10 +1,11 @@
+
 /**
  * @file netlify/functions/add-contact-submission.ts
- * @purpose Serverless function to add a new contact form submission.
+ * @purpose Serverless function to add a new contact form submission to Postgres.
  */
-import { getStore } from '@netlify/blobs';
 import { Handler } from '@netlify/functions';
-import type { ContactSubmission } from '../../types';
+import { db } from '../../db';
+import { contactSubmissions } from '../../db/schema';
 
 const handler: Handler = async (event) => {
     if (event.httpMethod !== 'POST') return { statusCode: 405, body: 'Method Not Allowed' };
@@ -15,17 +16,13 @@ const handler: Handler = async (event) => {
             return { statusCode: 400, body: JSON.stringify({ error: 'Missing required contact fields.' }) };
         }
 
-        const store = getStore('villetta-rachele-data');
-        const submissions = await store.get('contactSubmissions', { type: 'json' }) as ContactSubmission[] || [];
-        
-        const newSubmission: ContactSubmission = {
-            ...submissionData,
-            id: Date.now(),
+        const [newSubmission] = await db.insert(contactSubmissions).values({
+            name: submissionData.name,
+            email: submissionData.email,
+            phone: submissionData.phone || null,
+            message: submissionData.message,
             submittedAt: new Date(),
-        };
-
-        submissions.unshift(newSubmission);
-        await store.setJSON('contactSubmissions', submissions);
+        }).returning();
 
         return {
             statusCode: 200,

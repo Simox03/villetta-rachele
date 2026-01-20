@@ -1,10 +1,11 @@
+
 /**
  * @file netlify/functions/add-review.ts
- * @purpose Serverless function to add a new user review to the Netlify Blob store.
+ * @purpose Serverless function to add a new user review to Postgres.
  */
-import { getStore } from '@netlify/blobs';
 import { Handler } from '@netlify/functions';
-import type { Review } from '../../types';
+import { db } from '../../db';
+import { reviews } from '../../db/schema';
 
 const handler: Handler = async (event) => {
     if (event.httpMethod !== 'POST') {
@@ -17,21 +18,13 @@ const handler: Handler = async (event) => {
             return { statusCode: 400, body: JSON.stringify({ error: 'Missing required fields: name, comment, rating.' }) };
         }
 
-        const store = getStore('villetta-rachele-data');
-        const reviews = await store.get('reviews', { type: 'json' }) as Review[] || [];
-        
-        const newReview: Review = {
-            id: Date.now(),
+        const [newReview] = await db.insert(reviews).values({
             name,
             comment,
             rating: Number(rating),
             submittedAt: new Date(),
             approved: false
-        };
-
-        reviews.unshift(newReview); // Add to the beginning
-
-        await store.setJSON('reviews', reviews);
+        }).returning();
 
         return {
             statusCode: 200,
